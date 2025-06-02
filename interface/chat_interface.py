@@ -1,7 +1,9 @@
 import streamlit as st
 import asyncio
 from typing import Dict, Any
-from agents import OrchestratorAgent, SubagentAlpha, SubagentBeta
+from google_adk_agents.orchestrators.orchestrator_adk import OrchestratorADK
+from google_adk_agents.workers.sub_agent_alpha_adk import SubAgentAlphaADK
+from google_adk_agents.workers.sub_agent_beta_adk import SubAgentBetaADK
 from config.settings import settings
 import logging
 
@@ -22,9 +24,9 @@ class ChatInterface:
         """Inicializa todos los agentes del sistema"""
         try:
             # Crear agentes
-            self.orchestrator = OrchestratorAgent(settings.ORCHESTRATOR_MODEL)
-            self.subagent_alpha = SubagentAlpha(settings.SUBAGENT_MODEL)
-            self.subagent_beta = SubagentBeta(settings.SUBAGENT_MODEL)
+            self.orchestrator = OrchestratorADK(settings.ORCHESTRATOR_MODEL)
+            self.subagent_alpha = SubAgentAlphaADK(settings.SUBAGENT_MODEL)
+            self.subagent_beta = SubAgentBetaADK(settings.SUBAGENT_MODEL)
             
             # Registrar subagentes en el orquestador
             self.orchestrator.register_subagent("alpha", self.subagent_alpha)
