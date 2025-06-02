@@ -1,6 +1,6 @@
 import pytest
 import asyncio
-from agents import OrchestratorAgent, SubagentAlpha, SubagentBeta
+from agents__borrar import OrchestratorAgent, SubagentAlpha, SubagentBeta
 
 class TestMultiAgentIntegration:
     """Tests de integración para el sistema multiagente"""

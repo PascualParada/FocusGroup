@@ -1,5 +1,10 @@
-import logging
+import google.generativeai as genai
 from typing import Dict, Any, List
+import logging
+from ..base.adk_agent import ADKAgent
+from ..workers.sub_agent_sombrero_amarillo_adk import SubAgentSombreroAmarilloADK
+from ..workers.sub_agent_sombrero_negro_adk import SubAgentSombreroNegroADK
+import asyncio
 
 # Attempting to import genai, assuming it will be available in the environment
 try:
@@ -22,7 +27,7 @@ class OrchestratorADK(ADKAgent):
     Manages subagents and delegates tasks accordingly.
     """
 
-    def __init__(self, model_name: str, **kwargs):
+    def __init__(self, model_name: str = "gemini-1.5-pro", **kwargs):
         """
         Initializes the OrchestratorADK.
 
@@ -44,6 +49,13 @@ class OrchestratorADK(ADKAgent):
         self.logger = logging.getLogger(__name__)
         logging.basicConfig(level=logging.INFO) # Basic config for logging
 
+        # Inicializar y registrar los subagentes
+        self.subagent_sombrero_amarillo = SubAgentSombreroAmarilloADK("gemini-1.5-flash")
+        self.subagent_sombrero_negro = SubAgentSombreroNegroADK("gemini-1.5-flash")
+        
+        self.register_subagent("sombrero_amarillo", self.subagent_sombrero_amarillo)
+        self.register_subagent("sombrero_negro", self.subagent_sombrero_negro)
+
     def get_instructions(self) -> str:
         """
         Returns the system prompt for the orchestrator agent.
@@ -59,7 +71,7 @@ class OrchestratorADK(ADKAgent):
         """Retorna la lista de subagentes disponibles"""
         return list(self.subagents.keys())
 
-    def process_task(self, task: str, context: Dict[str, Any] = None) -> str:
+    async def process_task(self, task: str, context: Dict[str, Any] = None) -> str:
         """
         Procesa una consulta del usuario y coordina con los subagentes
         """
@@ -69,6 +81,24 @@ class OrchestratorADK(ADKAgent):
             return "Error: Orchestrator model not available."
 
         try:
+            # Verificar que los subagentes estén disponibles
+            if "sombrero_amarillo" not in self.subagents:
+                self.logger.error("Sombrero Amarillo no está registrado")
+                return "Error: Sombrero Amarillo no está disponible"
+            
+            if "sombrero_negro" not in self.subagents:
+                self.logger.error("Sombrero Negro no está registrado")
+                return "Error: Sombrero Negro no está disponible"
+
+            # Verificar que los modelos de los subagentes estén inicializados
+            if not self.subagents["sombrero_amarillo"].model:
+                self.logger.error("Modelo del Sombrero Amarillo no está inicializado")
+                return "Error: Modelo del Sombrero Amarillo no está disponible"
+            
+            if not self.subagents["sombrero_negro"].model:
+                self.logger.error("Modelo del Sombrero Negro no está inicializado")
+                return "Error: Modelo del Sombrero Negro no está disponible"
+
             # Analizar la consulta
             analysis_prompt = f"""
             {self.get_instructions()}
@@ -80,16 +110,14 @@ class OrchestratorADK(ADKAgent):
             2. ¿Qué información específica necesitas de cada subagente?
             3. ¿Cómo coordinarás las respuestas?
 
-            Considera los siguientes subagentes disponibles: {self.get_available_subagents()}
+            Pasa la consulta a los subagentes disponibles: {self.get_available_subagents()}
 
             Responde con tu plan de acción.
             """
 
             self.logger.info("Generating analysis for task...")
-            # Assuming generate_content returns an object with a 'text' attribute
-            response = self.model.generate_content(analysis_prompt)
+            response = await asyncio.to_thread(self.model.generate_content, analysis_prompt)
 
-            # Check if response or response.text is None
             if response is None or not hasattr(response, 'text') or response.text is None:
                 self.logger.error("LLM response was empty or malformed.")
                 return "Error: LLM response was empty or malformed."
@@ -97,17 +125,48 @@ class OrchestratorADK(ADKAgent):
             analysis_result = response.text
             self.logger.info(f"Orchestrator analysis: {analysis_result}")
 
-            # TODO: Implement actual delegation logic based on analysis_result
-            # For now, returning the analysis as was in the old method.
-            # Example:
-            # chosen_agent_name = self._parse_chosen_agent(analysis_result)
-            # if chosen_agent_name and chosen_agent_name in self.subagents:
-            #     sub_task = self._extract_sub_task(analysis_result)
-            #     return self.subagents[chosen_agent_name].process_task(sub_task, context)
-            # else:
-            #     return "Could not determine an appropriate subagent or subagent not found."
+            # Llamar a los subagentes de forma asíncrona
+            try:
+                self.logger.info("Llamando a los subagentes de forma asíncrona...")
+                sombrero_amarillo_task = await self.subagents["sombrero_amarillo"].process_task(task, context)
+                sombrero_negro_task = await self.subagents["sombrero_negro"].process_task(task, context)
+                
+                # Ya no necesitamos asyncio.gather porque estamos esperando las respuestas directamente
+                self.logger.info(f"Sombrero Amarillo response: {sombrero_amarillo_task}")
+                self.logger.info(f"Sombrero Negro response: {sombrero_negro_task}")
+                
+                # Asignar las respuestas a las variables correctas
+                sombrero_amarillo_response = sombrero_amarillo_task
+                sombrero_negro_response = sombrero_negro_task
+            except Exception as e:
+                self.logger.error(f"Error en la llamada a los subagentes: {str(e)}", exc_info=True)
+                return f"Error en la llamada a los subagentes: {str(e)}"
 
-            return analysis_result
+            # Generar resumen comparativo
+            summary_prompt = f"""
+            {self.get_instructions()}
+
+            Basado en las respuestas de los subagentes, genera un resumen comparativo:
+
+            Respuesta del Sombrero Amarillo:
+            {sombrero_amarillo_response}
+
+            Respuesta del Sombrero Negro:
+            {sombrero_negro_response}
+
+            Genera un informe que incluya:
+            1. Principales fortalezas identificadas (Sombrero Amarillo)
+            2. Principales riesgos o debilidades detectadas (Sombrero Negro)
+            3. Contrastes clave entre ambas perspectivas
+            """
+
+            self.logger.info("Generando resumen comparativo...")
+            summary_response = await asyncio.to_thread(self.model.generate_content, summary_prompt)
+            if summary_response is None or not hasattr(summary_response, 'text') or summary_response.text is None:
+                self.logger.error("Error generando resumen comparativo")
+                return "Error: No se pudo generar el resumen comparativo"
+            
+            return summary_response.text
 
         except Exception as e:
             self.logger.error(f"Error in orchestrator processing task '{task}': {str(e)}", exc_info=True)

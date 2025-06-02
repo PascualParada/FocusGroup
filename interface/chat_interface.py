@@ -2,8 +2,8 @@ import streamlit as st
 import asyncio
 from typing import Dict, Any
 from google_adk_agents.orchestrators.orchestrator_adk import OrchestratorADK
-from google_adk_agents.workers.sub_agent_alpha_adk import SubAgentAlphaADK
-from google_adk_agents.workers.sub_agent_beta_adk import SubAgentBetaADK
+from google_adk_agents.workers.sub_agent_sombrero_amarillo_adk import SubAgentSombreroAmarilloADK
+from google_adk_agents.workers.sub_agent_sombrero_negro_adk import SubAgentSombreroNegroADK
 from config.settings import settings
 import logging
 
@@ -16,8 +16,8 @@ class ChatInterface:
     
     def __init__(self):
         self.orchestrator = None
-        self.subagent_alpha = None
-        self.subagent_beta = None
+        self.subagent_sombrero_amarillo = None
+        self.subagent_sombrero_negro = None
         self._initialize_agents()
     
     def _initialize_agents(self):
@@ -25,18 +25,27 @@ class ChatInterface:
         try:
             # Crear agentes
             self.orchestrator = OrchestratorADK(settings.ORCHESTRATOR_MODEL)
-            self.subagent_alpha = SubAgentAlphaADK(settings.SUBAGENT_MODEL)
-            self.subagent_beta = SubAgentBetaADK(settings.SUBAGENT_MODEL)
+            self.subagent_sombrero_amarillo = SubAgentSombreroAmarilloADK(settings.SUBAGENT_MODEL)
+            self.subagent_sombrero_negro = SubAgentSombreroNegroADK(settings.SUBAGENT_MODEL)
             
             # Registrar subagentes en el orquestador
-            self.orchestrator.register_subagent("alpha", self.subagent_alpha)
-            self.orchestrator.register_subagent("beta", self.subagent_beta)
+            self.orchestrator.register_subagent("sombrero_amarillo", self.subagent_sombrero_amarillo)
+            self.orchestrator.register_subagent("sombrero_negro", self.subagent_sombrero_negro)
             
             logger.info("Todos los agentes inicializados correctamente")
             
         except Exception as e:
             logger.error(f"Error inicializando agentes: {str(e)}")
             st.error(f"Error inicializando el sistema: {str(e)}")
+
+    async def process_message(self, message: str) -> str:
+        """Procesa un mensaje de forma asíncrona usando el orquestador"""
+        try:
+            response = await self.orchestrator.process_task(message)
+            return response
+        except Exception as e:
+            logger.error(f"Error procesando mensaje: {str(e)}")
+            return f"Error procesando la consulta: {str(e)}"
     
     def run(self):
         """Ejecuta la interfaz de chat"""
@@ -54,19 +63,19 @@ class ChatInterface:
             st.header("Estado del Sistema")
             if self.orchestrator:
                 st.success("✅ Orquestador: Activo")
-                st.success("✅ SubagentAlpha: Activo") 
-                st.success("✅ SubagentBeta: Activo")
+                st.success("✅ SubagentSombreroAmarillo: Activo") 
+                st.success("✅ SubagentSombreroNegro: Activo")
             else:
                 st.error("❌ Sistema no inicializado")
             
             st.header("Información de Agentes")
-            if self.subagent_alpha:
-                alpha_info = self.subagent_alpha.get_capabilities()
-                st.json(alpha_info)
+            if self.subagent_sombrero_amarillo:
+                sombrero_amarillo_info = self.subagent_sombrero_amarillo.get_capabilities()
+                st.json(sombrero_amarillo_info)
             
-            if self.subagent_beta:
-                beta_info = self.subagent_beta.get_capabilities()
-                st.json(beta_info)
+            if self.subagent_sombrero_negro:
+                sombrero_negro_info = self.subagent_sombrero_negro.get_capabilities()
+                st.json(sombrero_negro_info)
         
         # Chat principal
         if "messages" not in st.session_state:
@@ -88,10 +97,15 @@ class ChatInterface:
             with st.chat_message("assistant"):
                 with st.spinner("Procesando con el sistema multiagente..."):
                     try:
-                        # Aquí se ejecutaría el procesamiento asíncrono
-                        # Por ahora simulamos una respuesta
-                        response = f"[Orquestador] Procesando: '{prompt}'\n\n"
-                        response += "El orquestador analizará tu consulta y determinará qué subagentes pueden ayudar mejor."
+                        # Crear un nuevo event loop para el procesamiento asíncrono
+                        loop = asyncio.new_event_loop()
+                        asyncio.set_event_loop(loop)
+                        
+                        # Ejecutar el procesamiento asíncrono
+                        response = loop.run_until_complete(self.process_message(prompt))
+                        
+                        # Cerrar el loop
+                        loop.close()
                         
                         st.markdown(response)
                         st.session_state.messages.append({"role": "assistant", "content": response})

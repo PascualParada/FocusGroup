@@ -9,7 +9,7 @@ try:
     from google_adk_agents.base.adk_agent import ADKAgent
     from google_adk_agents.orchestrators.orchestrator_adk import OrchestratorADK
     from google_adk_agents.workers.sub_agent_alpha_adk import SubAgentAlphaADK
-    from google_adk_agents.workers.sub_agent_beta_adk import SubAgentBetaADK
+    from google_adk_agents.workers.sub_agent_sombrero_negro_adk import SubAgentBetaADK
     print("Successfully imported ADKAgent, OrchestratorADK, SubAgentAlphaADK, SubAgentBetaADK")
 except ImportError as e:
     print(f"ImportError: {e}")

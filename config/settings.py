@@ -9,7 +9,7 @@ class Settings:
     PROJECT_ID = os.getenv("GOOGLE_PROJECT_ID", "your-project-id")
     
     # Agent Configuration
-    ORCHESTRATOR_MODEL = "gemini-1.5-pro"
+    ORCHESTRATOR_MODEL = "gemini-1.5-flash"
     SUBAGENT_MODEL = "gemini-1.5-flash"
     
     # System Configuration

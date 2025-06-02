@@ -26,7 +26,7 @@ class ADKAgent(ABC):
         pass
 
     @abstractmethod
-    def process_task(self, task: str, context: dict = None) -> str:
+    async def process_task(self, task: str, context: dict = None) -> str:
         """
         Processes a given task, potentially using context.
         This method must be implemented by subclasses.

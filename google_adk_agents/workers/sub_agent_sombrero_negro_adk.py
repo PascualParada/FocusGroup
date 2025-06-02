@@ -1,25 +1,26 @@
 import logging
 from typing import Dict, Any
+import asyncio
 
 try:
     import google.generativeai as genai
 except ImportError:
     genai = None
-    print("Warning: google.generativeai not found. Functionality requiring it will fail for SubAgentBetaADK.")
+    print("Warning: google.generativeai not found. Functionality requiring it will fail for SubAgentSombreroNegroADK.")
 
 from ..base.adk_agent import ADKAgent
-from ..prompts.sub_agent_prompts import SUB_AGENT_BETA_SYSTEM_PROMPT
+from ..prompts.sub_agent_prompts import SUB_AGENT_SOMBRERONEGRO_SYSTEM_PROMPT
 
 
-class SubAgentBetaADK(ADKAgent):
+class SubAgentSombreroNegroADK(ADKAgent):
     """
-    SubAgentBetaADK - Agente especializado (función específica por definir)
+    SubAgentSombreroNegroADK - Agente especializado (función específica por definir)
     Adaptado para el framework ADK.
     """
 
     def __init__(self, model_name: str = "gemini-1.5-flash", **kwargs):
         """
-        Initializes the SubAgentBetaADK.
+        Initializes the SubAgentSombreroNegroADK.
 
         Args:
             model_name: The name of the generative model to use.
@@ -30,7 +31,7 @@ class SubAgentBetaADK(ADKAgent):
             self.model = genai.GenerativeModel(model_name)
         else:
             self.model = None
-            print("Error: SubAgentBetaADK GenerativeModel cannot be initialized because google.generativeai is not available.")
+            print("Error: SubAgentSombreroNegroADK GenerativeModel cannot be initialized because google.generativeai is not available.")
 
         self.logger = logging.getLogger(__name__)
         # Basic config for logging, if not already configured
@@ -39,11 +40,11 @@ class SubAgentBetaADK(ADKAgent):
 
     def get_instructions(self) -> str:
         """
-        Returns the system prompt for SubAgentBeta.
+        Returns the system prompt for SubAgentSombreroNegro.
         """
-        return SUB_AGENT_BETA_SYSTEM_PROMPT
+        return SUB_AGENT_SOMBRERONEGRO_SYSTEM_PROMPT
 
-    def process_task(self, task: str, context: Dict[str, Any] = None) -> str:
+    async def process_task(self, task: str, context: Dict[str, Any] = None) -> str:
         """
         Procesa una tarea específica asignada por el orquestador.
 
@@ -54,10 +55,10 @@ class SubAgentBetaADK(ADKAgent):
         Returns:
             A string representing the result or output of the task processing.
         """
-        self.logger.info(f"SubAgentBetaADK received task: {task}")
+        self.logger.info(f"SubAgentSombreroNegroADK received task: {task}")
         if not self.model:
-            self.logger.error("SubAgentBetaADK model not initialized. Cannot process task.")
-            return "Error: SubAgentBetaADK model not available."
+            self.logger.error("SubAgentSombreroNegroADK model not initialized. Cannot process task.")
+            return "Error: SubAgentSombreroNegroADK model not available."
 
         try:
             prompt = f"""
@@ -69,17 +70,18 @@ class SubAgentBetaADK(ADKAgent):
             Desde tu perspectiva especializada, procesa esta tarea y proporciona una respuesta.
             """
 
-            response = self.model.generate_content(prompt)
+            # Convertir generate_content en asíncrono usando asyncio.to_thread
+            response = await asyncio.to_thread(self.model.generate_content, prompt)
 
             if response is None or not hasattr(response, 'text') or response.text is None:
-                self.logger.error("SubAgentBetaADK LLM response was empty or malformed.")
+                self.logger.error("SubAgentSombreroNegroADK LLM response was empty or malformed.")
                 return "Error: LLM response was empty or malformed."
 
-            self.logger.info(f"SubAgentBetaADK completed task: {task[:50]}...")
+            self.logger.info(f"SubAgentSombreroNegroADK completed task: {task[:50]}...")
             return response.text
 
         except Exception as e:
-            self.logger.error(f"Error in SubAgentBetaADK processing task '{task}': {str(e)}", exc_info=True)
+            self.logger.error(f"Error in SubAgentSombreroNegroADK processing task '{task}': {str(e)}", exc_info=True)
             return f"Error procesando la tarea: {str(e)}"
 
     def get_capabilities(self) -> dict:
@@ -87,8 +89,8 @@ class SubAgentBetaADK(ADKAgent):
         # This is copied from the old SubagentBeta,
         # assuming it fits the ADKAgent's expected format.
         return {
-            "name": "SubAgentBetaADK", # Updated name
-            "specialization": "Función por definir (Beta)", # Clarified specialization
+            "name": "SubAgentSombreroNegroADK", # Updated name
+            "specialization": "Representas al sombrero negro. Tu función es detectar riesgos, problemas potenciales, debilidades o puntos ciegos en la propuesta.", # Clarified specialization
             "status": "Activo",
             "model": self.model_name # Use model_name passed during init
         }
