@@ -4,6 +4,8 @@ import logging
 from ..base.adk_agent import ADKAgent
 from ..workers.sub_agent_sombrero_amarillo_adk import SubAgentSombreroAmarilloADK
 from ..workers.sub_agent_sombrero_negro_adk import SubAgentSombreroNegroADK
+from ..workers.sub_agent_sombrero_rojo_adk import SubAgentSombreroRojoADK
+from ..workers.sub_agent_sombrero_verde_adk import SubAgentSombreroVerdeADK
 import asyncio
 
 # Attempting to import genai, assuming it will be available in the environment
@@ -52,9 +54,12 @@ class OrchestratorADK(ADKAgent):
         # Inicializar y registrar los subagentes
         self.subagent_sombrero_amarillo = SubAgentSombreroAmarilloADK("gemini-1.5-flash")
         self.subagent_sombrero_negro = SubAgentSombreroNegroADK("gemini-1.5-flash")
-        
+        self.subagent_sombrero_rojo = SubAgentSombreroRojoADK("gemini-1.5-flash")
+        self.subagent_sombrero_verde = SubAgentSombreroVerdeADK("gemini-1.5-flash")
         self.register_subagent("sombrero_amarillo", self.subagent_sombrero_amarillo)
         self.register_subagent("sombrero_negro", self.subagent_sombrero_negro)
+        self.register_subagent("sombrero_rojo", self.subagent_sombrero_rojo)
+        self.register_subagent("sombrero_verde", self.subagent_sombrero_verde)
 
     def get_instructions(self) -> str:
         """
@@ -89,6 +94,15 @@ class OrchestratorADK(ADKAgent):
             if "sombrero_negro" not in self.subagents:
                 self.logger.error("Sombrero Negro no está registrado")
                 return "Error: Sombrero Negro no está disponible"
+            
+            if "sombrero_rojo" not in self.subagents:
+                self.logger.error("Sombrero Rojo no está registrado")
+                return "Error: Sombrero Rojo no está disponible"
+
+            if "sombrero_verde" not in self.subagents:
+                self.logger.error("Sombrero Verde no está registrado")
+                return "Error: Sombrero Verde no está disponible"
+
 
             # Verificar que los modelos de los subagentes estén inicializados
             if not self.subagents["sombrero_amarillo"].model:
@@ -99,20 +113,22 @@ class OrchestratorADK(ADKAgent):
                 self.logger.error("Modelo del Sombrero Negro no está inicializado")
                 return "Error: Modelo del Sombrero Negro no está disponible"
 
+            if not self.subagents["sombrero_rojo"].model:
+                self.logger.error("Modelo del Sombrero Rojo no está inicializado")
+                return "Error: Modelo del Sombrero Rojo no está disponible"
+
+            if not self.subagents["sombrero_verde"].model:
+                self.logger.error("Modelo del Sombrero Verde no está inicializado")
+                return "Error: Modelo del Sombrero Verde no está disponible"
+
             # Analizar la consulta
             analysis_prompt = f"""
             {self.get_instructions()}
 
             Consulta del usuario: {task}
 
-            Analiza esta consulta y determina:
-            1. ¿Qué subagente(s) deberían manejar esta consulta?
-            2. ¿Qué información específica necesitas de cada subagente?
-            3. ¿Cómo coordinarás las respuestas?
-
-            Pasa la consulta a los subagentes disponibles: {self.get_available_subagents()}
-
-            Responde con tu plan de acción.
+            Analiza esta consulta e invoca a todos los agentes disponibles
+            
             """
 
             self.logger.info("Generating analysis for task...")
@@ -130,14 +146,21 @@ class OrchestratorADK(ADKAgent):
                 self.logger.info("Llamando a los subagentes de forma asíncrona...")
                 sombrero_amarillo_task = await self.subagents["sombrero_amarillo"].process_task(task, context)
                 sombrero_negro_task = await self.subagents["sombrero_negro"].process_task(task, context)
-                
+                sombrero_rojo_task = await self.subagents["sombrero_rojo"].process_task(task, context)
+                sombrero_verde_task = await self.subagents["sombrero_verde"].process_task(task, context)
+
                 # Ya no necesitamos asyncio.gather porque estamos esperando las respuestas directamente
                 self.logger.info(f"Sombrero Amarillo response: {sombrero_amarillo_task}")
                 self.logger.info(f"Sombrero Negro response: {sombrero_negro_task}")
-                
+                self.logger.info(f"Sombrero Rojo response: {sombrero_rojo_task}")
+                self.logger.info(f"Sombrero Verde response: {sombrero_verde_task}")
+
                 # Asignar las respuestas a las variables correctas
                 sombrero_amarillo_response = sombrero_amarillo_task
                 sombrero_negro_response = sombrero_negro_task
+                sombrero_rojo_response = sombrero_rojo_task
+                sombrero_verde_response = sombrero_verde_task
+
             except Exception as e:
                 self.logger.error(f"Error en la llamada a los subagentes: {str(e)}", exc_info=True)
                 return f"Error en la llamada a los subagentes: {str(e)}"
@@ -146,18 +169,24 @@ class OrchestratorADK(ADKAgent):
             summary_prompt = f"""
             {self.get_instructions()}
 
-            Basado en las respuestas de los subagentes, genera un resumen comparativo:
-
-            Respuesta del Sombrero Amarillo:
+            La opinión del Sombrero Amarillo es la siguiente:
             {sombrero_amarillo_response}
 
-            Respuesta del Sombrero Negro:
+            La opinión del Sombrero Negro es la siguiente:
             {sombrero_negro_response}
 
-            Genera un informe que incluya:
-            1. Principales fortalezas identificadas (Sombrero Amarillo)
-            2. Principales riesgos o debilidades detectadas (Sombrero Negro)
-            3. Contrastes clave entre ambas perspectivas
+            La opinión del Sombrero Rojo es la siguiente:
+            {sombrero_rojo_response}
+
+            La opinión del Sombrero Verde es la siguiente:
+            {sombrero_verde_response}
+
+           Genera un resumen a modo de conclusion que incluya:
+            1. Principales fortalezas identificadas del Sombrero Amarillo (tamaño máximo 50 palabras)
+            2. Principales riesgos o debilidades detectadas del Sombrero Negro (tamaño máximo 50 palabras)
+            3. Principales emociones o intuiciones del Sombrero Rojo (tamaño máximo 50 palabras)
+            4. Principales ideas o conexiones del Sombrero Verde (tamaño máximo 50 palabras)
+            5. Resumen de todas las perspectivas. De acuerdo a todas las ideas anteriores, ¿qué conclusión puedes sacar? (tamaño máximo 50 palabras)
             """
 
             self.logger.info("Generando resumen comparativo...")
@@ -166,7 +195,24 @@ class OrchestratorADK(ADKAgent):
                 self.logger.error("Error generando resumen comparativo")
                 return "Error: No se pudo generar el resumen comparativo"
             
-            return summary_response.text
+            #return summary_response.text
+            return f""" 
+
+            La opinión del Sombrero Amarillo es la siguiente:
+            {sombrero_amarillo_response}
+
+            La opinión del Sombrero Negro es la siguiente:
+            {sombrero_negro_response}
+
+            La opinión del Sombrero Rojo es la siguiente:
+            {sombrero_rojo_response}
+
+            La opinión del Sombrero Verde es la siguiente:
+            {sombrero_verde_response}
+
+            {summary_response.text}
+
+            """
 
         except Exception as e:
             self.logger.error(f"Error in orchestrator processing task '{task}': {str(e)}", exc_info=True)

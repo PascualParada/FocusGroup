@@ -4,6 +4,8 @@ from typing import Dict, Any
 from google_adk_agents.orchestrators.orchestrator_adk import OrchestratorADK
 from google_adk_agents.workers.sub_agent_sombrero_amarillo_adk import SubAgentSombreroAmarilloADK
 from google_adk_agents.workers.sub_agent_sombrero_negro_adk import SubAgentSombreroNegroADK
+from google_adk_agents.workers.sub_agent_sombrero_rojo_adk import SubAgentSombreroRojoADK  
+from google_adk_agents.workers.sub_agent_sombrero_verde_adk import SubAgentSombreroVerdeADK
 from config.settings import settings
 import logging
 
@@ -18,6 +20,8 @@ class ChatInterface:
         self.orchestrator = None
         self.subagent_sombrero_amarillo = None
         self.subagent_sombrero_negro = None
+        self.subagent_sombrero_rojo = None
+        self.subagent_sombrero_verde = None
         self._initialize_agents()
     
     def _initialize_agents(self):
@@ -27,11 +31,13 @@ class ChatInterface:
             self.orchestrator = OrchestratorADK(settings.ORCHESTRATOR_MODEL)
             self.subagent_sombrero_amarillo = SubAgentSombreroAmarilloADK(settings.SUBAGENT_MODEL)
             self.subagent_sombrero_negro = SubAgentSombreroNegroADK(settings.SUBAGENT_MODEL)
-            
+            self.subagent_sombrero_rojo = SubAgentSombreroRojoADK(settings.SUBAGENT_MODEL)
+            self.subagent_sombrero_verde = SubAgentSombreroVerdeADK(settings.SUBAGENT_MODEL)
             # Registrar subagentes en el orquestador
             self.orchestrator.register_subagent("sombrero_amarillo", self.subagent_sombrero_amarillo)
             self.orchestrator.register_subagent("sombrero_negro", self.subagent_sombrero_negro)
-            
+            self.orchestrator.register_subagent("sombrero_rojo", self.subagent_sombrero_rojo)
+            self.orchestrator.register_subagent("sombrero_verde", self.subagent_sombrero_verde)
             logger.info("Todos los agentes inicializados correctamente")
             
         except Exception as e:
@@ -65,6 +71,8 @@ class ChatInterface:
                 st.success("✅ Orquestador: Activo")
                 st.success("✅ SubagentSombreroAmarillo: Activo") 
                 st.success("✅ SubagentSombreroNegro: Activo")
+                st.success("✅ SubagentSombreroRojo: Activo")
+                st.success("✅ SubagentSombreroVerde: Activo")
             else:
                 st.error("❌ Sistema no inicializado")
             
@@ -76,6 +84,14 @@ class ChatInterface:
             if self.subagent_sombrero_negro:
                 sombrero_negro_info = self.subagent_sombrero_negro.get_capabilities()
                 st.json(sombrero_negro_info)
+
+            if self.subagent_sombrero_rojo:
+                sombrero_rojo_info = self.subagent_sombrero_rojo.get_capabilities()
+                st.json(sombrero_rojo_info)
+
+            if self.subagent_sombrero_verde:
+                sombrero_verde_info = self.subagent_sombrero_verde.get_capabilities()
+                st.json(sombrero_verde_info)
         
         # Chat principal
         if "messages" not in st.session_state:
